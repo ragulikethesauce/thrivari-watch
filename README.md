@@ -5,4 +5,4 @@ Cloudflare and Google, so an outage that also takes down our own alerts still ge
 something was down; GitHub emails the owner about it.
 
 What it checks: `https://api.thrivari.com/health` (database, scheduled job, alert email), the PRVSN dash, the PRVSN
-booking page, and thrivari.com. Nothing here is secret: these are public addresses.
+booking page, and thrivari.com, plus that the booking page actually offers open times in the next 14 days. Nothing here is secret: these are public addresses.

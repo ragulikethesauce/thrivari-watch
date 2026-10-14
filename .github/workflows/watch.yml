@@ -28,6 +28,11 @@ jobs:
             done
             if [ "$ok" = "1" ]; then echo "ok   $u"; else echo "DOWN $u answered $code"; head -c 600 /tmp/body; echo; fail=1; fi
           done
+          # The booking page must offer times: the next 14 days for one haircut, as a guest would ask. No open time at all
+          # means guests can't book, even though every page loads.
+          open=$(curl -s -X POST https://api.thrivari.com/api/overview -H 'Origin: https://prvsn.thrivari.com' -H 'Content-Type: application/json' \
+            -d '{"days":14,"party":[{"service_slug":"mens-haircut","age_band":"adult"}]}' --max-time 20 | python3 -c 'import json,sys; d=json.load(sys.stdin); print(sum(1 for x in d.get("days", []) if x.get("open") and (x.get("count") or 0) > 0))' 2>/dev/null || echo 0)
+          if [ "${open:-0}" -gt 0 ]; then echo "ok   booking page offers times on $open of the next 14 days"; else echo "DOWN booking page offers no open times in the next 14 days"; fail=1; fi
           exit $fail
   # GitHub turns off schedules in a public repository after 60 days with no commits. On the 1st of each month this
   # writes the date to a file and commits it, so the watcher never quietly stops.
