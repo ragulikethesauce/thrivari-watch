@@ -1,0 +1,46 @@
+# Thrivari's outside watcher (14 Oct 2026). It runs on GitHub, off Cloudflare and Google, so it still speaks up when
+# our own servers, scheduled job, or alert email can't. Every 10 minutes it asks each address below; anything not
+# answering 200 fails the run, and GitHub emails the repository owner about the failed run.
+#
+# api.thrivari.com/health is the deep check: the database answers, the scheduled job ran in the last 20 minutes, and
+# the alert email isn't failing (barber-api src/index.js). The rest only need to load.
+name: watch
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Ask each address
+        run: |
+          fail=0
+          for u in https://api.thrivari.com/health https://prvsn-dash.thrivari.com/ https://prvsn.thrivari.com/ https://thrivari.com/; do
+            ok=0
+            for try in 1 2 3; do
+              code=$(curl -s -o /tmp/body -w '%{http_code}' -L --max-time 20 "$u" || echo 000)
+              if [ "$code" = "200" ]; then ok=1; break; fi
+              sleep 20
+            done
+            if [ "$ok" = "1" ]; then echo "ok   $u"; else echo "DOWN $u answered $code"; head -c 600 /tmp/body; echo; fail=1; fi
+          done
+          exit $fail
+  # GitHub turns off schedules in a public repository after 60 days with no commits. On the 1st of each month this
+  # writes the date to a file and commits it, so the watcher never quietly stops.
+  keepalive:
+    if: github.event.schedule == '*/10 * * * *'
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v4
+      - name: Monthly commit
+        run: |
+          if [ "$(date -u +%d%H)" = "0100" ] && [ "$(date -u +%M)" -lt 10 ]; then
+            date -u +%FT%TZ > last-keepalive.txt
+            git config user.name "thrivari-watch"; git config user.email "actions@users.noreply.github.com"
+            git add last-keepalive.txt && git commit -m "Keep the watcher's schedule on" && git push
+          fi
