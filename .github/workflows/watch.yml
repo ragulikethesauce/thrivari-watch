@@ -19,7 +19,7 @@ jobs:
       - name: Ask each address
         run: |
           fail=0
-          for u in https://api.thrivari.com/health https://prvsn-dash.thrivari.com/ https://prvsn.thrivari.com/ https://thrivari.com/; do
+          for u in https://api.thrivari.com/health https://dash.prvsnbarber.com/ https://prvsn-dash.thrivari.com/ https://prvsn.thrivari.com/ https://thrivari.com/; do
             ok=0
             for try in 1 2 3; do
               code=$(curl -s -o /tmp/body -w '%{http_code}' -L --max-time 20 "$u" || echo 000)
